@@ -1,0 +1,576 @@
+---
+title: "Customer Churn Report"
+author: "Adetunji Elegushi"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = F,
+	message = FALSE,
+	warning = FALSE
+)
+library(knitr)
+library(kableExtra)
+library(mdthemes)
+library(ggcharts)
+library(pacman)
+library(viridis)
+
+
+p_load(tidyverse,lubridate, janitor,knitr, kableExtra,patchwork,formattable,gt,gtExtras,mdthemes,gghighlight)
+
+customer_churn <- read_csv("~/customer churn/telecom_customer_churn.csv") %>% 
+  clean_names()
+
+
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+
+options(knitr.table.format = function() {
+  if (knitr::is_latex_output())
+    "latex" else "pipe"
+  
+})
+
+```
+
+ `r text_spec("Introduction",bold=T,font_size = 15,color="blue")`
+ 
+Often, companies don’t want to dig into the reasons a client leaves; they instead focus on replacing that customer as quickly as possible, leaving a valuable learning opportunity unrealized. Constantly pouring money into lead generation and new customer acquisition while failing to understand why customers leave is anathema to growth.  Holding on to a buying customer is cheaper than acquiring new customers. When customers leave and companies do not know why they leave; it will keep happening and in the long run, it will affect both the finances and level of loyalty of customers. Lowering your customer churn rate by five percent can increase your profitability by 25 to 125 percent.
+
+ 
+This is a Telecommunication company that provides phone and internet services to `r text_spec(format(nrow(customer_churn),big.mark=","),bold= T,color = "blue",font_size = 10 )` customers in California, this project will focus on knowing why customers are leaving the company so that the company will be able to use insights from this analysis to prevent future churn.
+
+#### Why do companies try to know customer who leave and those who stayed
+
+* Utilizes these insights to predict customers who are likely to churn
+
+* Gain insight and understands the negative impact that churn rate can have on company profits.
+
+* To identify the causes for churn and works to resolve those issues.
+
+* To engage with customers to foster relationships.
+
+
+**These are the questions that will guide the analysis**:
+
+
+What is the **customer profile** for a customer that churned?
+
+What seem to be the **key drivers** of customer churn?
+
+Is the company **losing high value** customers?
+
+How can they be **retained**?
+
+\pagebreak
+
+### Analysis
+
+They are **`r dim(customer_churn)[2]`** columns in this data set, and all the columns that will help us in knowing why the customers left will be used, also they are **`r format(dim(customer_churn)[1],big.mark=",")`** rows. 
+
+----
+
+So what are the **key drivers** of churn?
+
+For a telecommunication company, customers will leave mostly due to both **internal** and **external** factors, external causes such as competitors and other uncontrollable factors, while internal causes might be due to high prices, bad service; both technical and human(customer representatives) factors.
+
+
+```{r churned, echo=FALSE, message=FALSE}
+
+
+customer_status <- customer_churn %>% pull(36)
+
+df_customer_status <- data_frame(customer_status) %>% 
+  group_by(customer_status) %>% 
+  summarise(n=n()) %>% 
+  mutate(p =percent(c((n/sum(n))))) %>% 
+  arrange(-p)
+
+
+
+```
+
+The company has a total of `r format(nrow(customer_churn),big.mark = ",")` customers, The company `r text_spec("retained 67%", color="blue",bold=T)`  of its customers and  `r text_spec("lost 26%", color="red",bold=T)` and 6% `r text_spec("joined", color="blue",bold=T)`.
+
+```{r table for churned status, echo=FALSE, fig.height=4, fig.width=12}
+
+
+my_theme = theme(legend.position = "None",plot.title = element_text(face = "bold",size = 25, hjust = 0.5),strip.text.x = element_text(size = 22),axis.ticks = element_blank(),
+                                                             legend.key=element_blank(),
+                                                             panel.background = element_blank(),legend.title= element_text(size = 25),legend.text = element_text(size = 25),
+      axis.title =    element_text(face = "bold",size = 20 ), axis.text =element_text(size = 20), panel.spacing = unit(2, "lines") )
+
+theme_set(my_theme+theme_minimal())
+
+
+
+churn_reason<- customer_churn %>% pull(37)
+churn_reason <- factor(churn_reason)
+
+gender<- customer_churn %>% pull(2)
+
+danger_color =  c("#d7301f","#ef6548","#fc8d59","#fdbb84",
+"#fdd49e")
+
+
+dd=data_frame(gender,customer_status) %>% 
+  filter(customer_status == "Churned") %>% 
+  group_by(customer_status,gender) %>% 
+  summarise(n=n())
+
+
+
+ data_frame(churn_reason,gender) %>%
+  drop_na() %>%
+  group_by(gender,churn_reason) %>%
+    summarise(n=n()) %>%
+   mutate(p = percent(c(n/sum(n)))) %>% 
+    ggplot(aes(reorder(churn_reason,n),n))+geom_bar(stat = "identity",fill = "#ec7014")+coord_flip()+
+    labs( )+xlab("Churn Reason")+facet_wrap(~gender)+geom_text(aes(label=signif(p)),size = 8, hjust = 1)+ylab(("No. of Churn"))+scale_y_discrete("",labels = NULL)+as_md_theme(my_theme)+
+   ggtitle("<span style= color:'#ec7014'> Competitors</span> Is The Major Reason for Churn")+as_md_theme(my_theme)+labs(subtitle =   "  ")+
+   gghighlight(churn_reason == "Competitor", calculate_per_facet = T )
+
+
+# ccc <- highlight_spec(c("Male","female"), c("red", "green"))
+# tt <-  paste( "<span style = color:'#b2df8a'>**female**</span>", "(",dd$n[1])
+# 
+# 
+# ?strip.text.x
+ 
+ 
+# 
+#  dd =data_frame(churn_reason,gender) %>%
+#   drop_na() %>%
+#   group_by(gender,churn_reason) %>%
+#     summarise(n=n()) 
+#   bar_chart(dd,churn_reason, n)
+# library(patchwork)  
+# 
+# p1+p2
+
+
+#plot1+md_theme_minimal()+labs(subtitle  = tt)
+
+df_churn_reason <- data_frame(churn_reason) %>% 
+  drop_na() %>% 
+  group_by(churn_reason) %>% 
+summarise(n=n()) %>% 
+  mutate(p = percent(c(n/sum(n))))
+
+
+```
+
+From the above chart, We can generally say that both genders typically left for the same reasons, the major **external** driver of `r text_spec("churn", color = "#ec7014",bold= T)` is our `r text_spec("competitors", color = "#ec7014",bold= T)` (`r df_churn_reason$p[2]`), for internal factors,  such as  dissatisfaction, attitude, and price result  to `r  sum(df_churn_reason$p[-2])`.
+
+\pagebreak
+
+
+We will be analyzing the demographic columns to see how they affect churn
+
+1. Their age, marriage status and those who are dependents (most likely to be children)
+
+
+```{r echo=FALSE, fig.height=5, fig.width=20}
+
+age <- customer_churn %>% pull(3)
+age <- as.numeric(age)
+
+marriage = customer_churn %>% pull(4)
+marriage= recode(marriage,"Yes" = "Married","No" =  "Single")
+
+
+
+
+
+```
+
+
+```{r echo=FALSE, fig.height=4, fig.width=10, message=FALSE, warning=FALSE}
+
+groups <- rep(NA, length(age))
+seq1 <- seq(1,25,1)
+
+seq2 <- seq(26,41,1)
+
+seq3 <- seq(42,57,1)
+seq4 <- seq(58,67,1)
+seq5 <- seq(68,76,1)
+seq6 <- seq(77,94,1)
+
+
+for (i in 1:length(age)) {
+  if (!is.na(age[i]) & (age[i] %in% seq1)) {
+    groups[i] <- "Gen Z"
+    
+  }else if(!is.na(age[i]) & (age[i] %in% seq2)) {
+    groups[i] <- "Millennials"
+    
+  }else if(!is.na(age[i]) & (age[i] %in% seq3)) {
+    groups[i] <- "Gen X"
+    
+  }else if(!is.na(age[i]) & (age[i] %in% seq4)) {
+    groups[i] <- "Boomers II"
+    
+  }else if(!is.na(age[i]) & (age[i] %in% seq5)) {
+    groups[i] <- "Boomers I"
+    
+  }else if(!is.na(age[i]) & (age[i] %in% seq6)) {
+    groups[i] <- "Post War"
+    
+  }else{
+    groups[i] <- NA
+    
+  }
+  
+}
+
+
+my_theme2 <- theme(legend.position = "None",plot.title = element_text(size = 17, hjust = 0.52),
+                   plot.subtitle = element_text(size = 15, hjust = 0.5),strip.text.x = element_text(size = 15),axis.ticks = element_blank(),
+      legend.key=element_blank(),
+      panel.background = element_blank(),legend.title= element_text(size = 15),legend.text = element_text(size = 15),
+      axis.title =    element_text(face = "bold",size = 15 ), axis.text =element_text(size = 12))
+theme_set(my_theme2+theme_minimal())
+
+data_frame(groups,customer_status, marriage) %>% 
+  filter(customer_status == "Churned") %>% 
+  group_by(marriage,customer_status,groups) %>% 
+  summarise(n = n()) %>% 
+ggplot(aes(reorder(groups,n),n, fill=n))+geom_col(position = "dodge")+coord_flip()+facet_wrap(~marriage)+ scale_fill_viridis(direction = -1, alpha = 0.8)+as_md_theme(my_theme2)+
+  labs(subtitle = "Millennials  and Gen X Churned  A lot", x="Age Group")+ggtitle("**Single** Customers Churned The Most")+geom_text(aes(label = signif(n)), size=4, hjust = 2, face = "bold", color="white")+
+  scale_y_continuous("", labels = NULL)+gghighlight(groups %in% c("Gen X", "Millennials") , calculate_per_facet = T)
+
+
+dd=data_frame(groups,customer_status, marriage) %>% 
+  drop_na() %>% 
+  filter(customer_status == "Churned") %>% 
+  group_by(marriage,groups) %>% 
+  summarise(n = n())
+
+```
+
+Out of `r format(na.omit(length(marriage)),big.mark = ",")`, `r format(sum(subset(dd,marriage == "Married")$n),big.mark = ",")` **marrried** customers `r text_spec("churned",bold= T, color = "red")`
+ and `r format(sum(subset(dd,marriage == "Single")$n),big.mark = ",")` **singles**. **Gen X** and **Millenials**   `r text_spec("churned",bold= T, color = "red")` a lot for customers that are single.
+ 
+```{r echo=FALSE,message=FALSE}
+
+city <- customer_churn %>% pull(6)
+
+
+city <- factor(city)
+df =data_frame(city,customer_status) %>% 
+  filter(customer_status == "Churned") %>% 
+  group_by(city) %>% 
+  summarise(n = n()) %>% 
+  mutate(percent = percent(c(n/sum(n)))) %>% 
+  arrange(-n) %>% 
+  top_n(10,n)
+
+df$n <- formatC(df$n, big.mark=",", format = "d")
+
+knitr::kable(
+  df,
+  col.names = c('State', 'Count', 'Percentage (%)'),
+  caption = "Churn In Top 10 Cities", 
+  booktabs = T
+) %>%
+  kable_styling(position = "center", latex_options = c("striped", "hold_position"), full_width = F)
+
+```
+
+ The company operates in `r format(unique(length(na.omit(city))),big.mark=",")` cities and from the table above, the cities with the highest churn is from San Diego, San Francisco and San Jose as the top three.
+
+
+
+```{r echo=FALSE,message=FALSE, fig.height=4,fig.width=10}
+refferals<- customer_churn %>%  pull(10)
+
+
+rf_df <- data_frame(city,refferals,customer_status) %>% 
+  filter(! refferals  == 0, customer_status != "Joined") %>% 
+  group_by(city,customer_status) %>% 
+  summarise( add= sum(refferals)) 
+
+lollipop_chart(rf_df,city,add, facet = customer_status, top_n = 10)+theme_minimal()+
+  labs(title =  "Top Ten Cities With High Refferals",subtitle = "Los Angeles refer more customers than any other city", x= "Cities", y="No. of referrals")+
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+
+```
+Even though most churn  came from Los Angeles, most of the refferal also came from   **Los Angeles** (`r sum(subset(rf_df,city == "Los Angeles")$add)`), **San Diego** (`r sum(subset(rf_df,city == "San Diego")$add)`) and **San Jose** (`r sum(subset(rf_df,city == "San Jose")$add)`) as the top three
+
+### So what are the major internal controllable factors that made our customers leave?
+
+The services given by the company:
+
+Premium technology support.
+
+Phone and Internet services.
+
+Internet offers
+
+Streaming of music, movies, and  television
+
+Every services will be explored in relation to customers that left.
+
+\pagebreak
+
+
+
+Are customers receiving **premium tech support** leaving?
+
+
+```{r number2, echo=FALSE,message=FALSE,warning=FALSE}
+
+premium_tech_support<- customer_churn %>% pull(22)
+
+
+customer_tech_df <- data_frame(premium_tech_support,customer_status) %>% 
+  filter(!(customer_status == "Joined")) %>% 
+  drop_na() %>% 
+  group_by(premium_tech_support,customer_status) %>% 
+  summarise(n = n()) %>% 
+  mutate(p = percent(c(n/sum(n))))
+
+
+
+```
+
+
+
+```{r table for tech, echo=FALSE, message=FALSE,warning=FALSE, fig.height=3,fig.width=8}
+
+p_title <-  paste("**Premium Technological support** is not a major driver of \nchurn")
+
+my_theme2 <- theme(legend.position = "None",plot.title = element_text(size = 17, hjust = 0.52),
+                   plot.subtitle = element_text(size = 15, hjust = 0.5),strip.text.x = element_text(size = 15),axis.ticks = element_blank(),
+      legend.key=element_blank(),
+      panel.background = element_blank(),legend.title= element_text(size = 15),legend.text = element_text(size = 15),
+      axis.title =    element_text(face = "bold",size = 12 ))
+
+
+
+ customer_tech_df %>% 
+ggplot(aes(reorder(premium_tech_support,n),n,fill= premium_tech_support))+geom_col(show.legend = F)+
+  scale_fill_brewer( palette = "YlGnBu" )+
+  labs(title = p_title, subtitle = "Less customers receiveing tech support churned" )+xlab(" Receiving Tech Support")+ylab(("No. of Tech Support"))+
+  geom_text(aes(label = signif(p)), hjust = 1)+facet_wrap(~customer_status)+ggtitle(p_title)+as_md_theme(my_theme2)+scale_y_continuous("",labels = NULL)+coord_flip()
+ 
+ 
+scales_color_2 = scale_fill_manual(values = c("#b2df8a","#bebada"))
+
+color_2 = c("#b2df8a","#bebada")
+
+```
+
+Customers who `r text_spec("churned", color = "red", bold = T)`  and also receive **premium technology support** is  `r subset(customer_tech_df, premium_tech_support == "Yes" & customer_status=="Churned")$p` compared  to those who do **not** receive premium technological support and also churn `r subset(customer_tech_df, premium_tech_support == "No" & customer_status=="Churned")$p`. We can say that premium tech support is not a major driver of churn but customers who are not receiving premium tech support churn the most.
+
+
+```{r echo=FALSE, message=FALSE,warning=FALSE, fig.height=3,fig.width=7, fig.align='center'}
+
+
+phone_services<- customer_churn %>% pull(13)
+
+internet_service <- customer_churn %>% pull(16)
+
+phone_internet_df <- data_frame(phone_services,customer_status,internet_service) %>% 
+  filter(customer_status == "Churned")%>% 
+  drop_na() %>% 
+  pivot_longer(cols = c(phone_services,internet_service)) %>% 
+  group_by(customer_status,name,value) %>% 
+  summarise(n = n()) %>% 
+  mutate(p = percent(c(n/sum(n)))) 
+two_color = c("#ffffbf","#74c476")
+my_theme1 <- theme(legend.position = "top", plot.title = element_text(size = 15, hjust = 0.5),
+                   plot.subtitle = element_text(size = 15, hjust = 0.5),strip.text.x = element_text(size = 20),axis.ticks = element_blank(),
+      legend.key=element_blank(),
+      panel.background = element_blank(),legend.title= element_text(size = 15),legend.text = element_text(size = 12),
+      axis.title =    element_text(face = "bold",size = 12 ), axis.text =element_text(size = 12))
+  
+ title <- ("Customers Using **Phone** and **Internet** Services Churned A lot" )
+
+phone_internet_df %>% 
+ggplot(aes(name,n, fill=value))+geom_bar(stat= "identity", position = "dodge", width = .6)+coord_flip()+
+ as_md_theme(my_theme1)+scale_y_continuous("", labels = NULL)+geom_text(aes(label=signif(p)), position = position_dodge(width = 0.5), size =4)+
+  scale_x_discrete("services", labels=c("Phone", "Internet"))+scale_fill_brewer(name= "Useage", palette = "YlGnBu" )+ggtitle(title)+labs(subtitle =" Services rendered is a major driver of churn")
+
+
+
+ 
+ 
+ 
+```
+
+Customers who `r text_spec("churned",bold= T, color = "red")` and also  use **internet service** is `r format(sum(subset(phone_internet_df, name =="internet_service")$n),big.mark = ",")`, out of this people, `r phone_internet_df$p[2]` of them left, for context, 9 out out of 10 of them left, and for those who use the **phone service** were `r format(sum(subset(phone_internet_df, name =="phone_services")$n),big.mark = ",")` and `r phone_internet_df$p[4]` of them left, that is 9 out of 10 left also. A total of  `r format(sum(subset(phone_internet_df, value =="Yes")$n),big.mark = ",")` churned for customers using both phone and internet services out of `r format(nrow(customer_churn), big.mark = ",")`.
+
+
+
+Since Internet services is a major driver of churn, then the different offers given by the company must be analysed.
+
+```{r internet type2,echo=FALSE, message=FALSE,warning=FALSE, fig.height=5,fig.width=10,fig.align='center'}
+
+internet_type <- customer_churn %>% pull(17)
+
+internet_offers <- customer_churn %>% pull(12)
+
+
+internet_df <- data_frame(internet_type,internet_offers, customer_status) %>% 
+  filter(customer_status == "Churned") %>% 
+  drop_na() %>% 
+  group_by(internet_type,internet_offers) %>% 
+  summarise(n = n()) %>% 
+  mutate(p = percent(n/sum(n))) %>% 
+  arrange(-n)
+
+mm <- highlight_spec("Fiber Optic","red", "#fee0d2")
+
+
+my_samll_theme <- theme(legend.position = "None",plot.title = element_text(size = 20, hjust = 0.5),strip.text.x = element_text(size = 12),axis.ticks = element_blank(),
+      legend.key=element_blank(),plot.subtitle = element_text(size = 15, hjust = 0.5),
+      panel.background = element_blank(),legend.title= element_text(size = 15),legend.text = element_text(size = 15),
+      axis.title =    element_text(face = "bold",size = 15 ), axis.text =element_text(size = 12),panel.spacing = unit(3, "lines"))
+
+   
+
+ggplot(internet_df, aes(reorder(internet_type, n),n, fill=n))+geom_col()+facet_wrap(~internet_offers, scales = "free_x")+
+  scale_fill_viridis(alpha = 0.7)+as_md_theme(my_samll_theme)+
+  ggtitle("Customers Who Do Not Use Any Offer (None) <br>Have High Chance Of Churning</br>")+coord_flip()+
+  labs(subtitle = "Fiber Optic Users Churned the most")+scale_y_continuous("No. of users")+scale_x_discrete("Internet Type")+geom_text(aes(label=signif(n)),size = 4, hjust =1, color = "white", face = "bold")+
+  gghighlight(internet_type == "Fiber Optic", calculate_per_facet = T)
+  
+```
+
+
+A total of  `r format(length(subset(internet_offers,internet_offers == "None")),big.mark = ",") `  do not use **any offer(None)** but a total of `r sum(subset(internet_df,internet_offers == "None")$n)` `r text_spec("churned",bold= T, color = "red")`,  customers who also use **fiber optic** (`r sum(subset(internet_df,internet_offers == "None"&internet_type=="Fiber Optic")$p)`)
+) and had no offers `r text_spec("churned",bold= T, color = "red")`.
+Offer E is also high, from a total of `r format(length(subset(internet_offers,internet_offers == "Offer E")),big.mark = ",") ` that use it, `r sum(subset(internet_df,internet_offers == "Offer E")$n) `r text_spec("churned",bold= T, color = "red")` and most of them are those that also use **fiber optics** 
+(`r subset(internet_df,internet_offers == "Offer E"&internet_type=="Fiber Optic")$p`)
+
+
+
+```{r unlimited data, echo=FALSE, message=FALSE,warning=FALSE, fig.height=3,fig.width=5,fig.align='center'}
+
+unlimited_data <- customer_churn %>% pull(26)
+multiple_lines <- customer_churn %>% pull(15)  
+
+data_frame(multiple_lines,unlimited_data,customer_status) %>% 
+  filter(customer_status == "Churned") %>%
+  drop_na() %>% 
+  group_by(multiple_lines,unlimited_data) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(multiple_lines,n, fill =unlimited_data ))+geom_col(position = "dodge",width = 0.5)+geom_text(aes(y =n,x =multiple_lines, label = signif(n)),position = position_dodge(width = 0.5))+scale_fill_brewer(name = "Using Unlimited data", palette = "YlGnBu")+labs(title = "Customers Using Multiple Lines Churned a lot",x = "Multipline Line Users", y = "", )+scale_y_continuous(labels = NULL)+theme(legend.position = "top")+theme(plot.title = element_text(hjust = 1))
+
+
+```
+From the chart, we can see that that customers using **multiple lines** and also using **unlimited data** `r text_spec("churned",bold= T, color = "red")` a lot.
+
+```{r echo=FALSE,message=FALSE,fig.height=4,fig.width=15}
+my_samll_theme <- theme(legend.position = "top",plot.title = element_text(size = 30, hjust = 0.5),strip.text.x = element_text(size = 20),axis.ticks = element_blank(),
+      legend.key=element_blank(),plot.subtitle = element_text(size = 30, hjust = 0.5),
+      panel.background = element_blank(),legend.title= element_text(size = 25),legend.text = element_text(size = 20),
+      axis.title =    element_text(face = "bold",size = 25 ), axis.text =element_text(size = 10))
+
+   
+contract <- customer_churn %>% pull(27)
+ss =factor(contract,levels =c("Two Year","Month-to-Month", "One Year"),
+           labels = c("Two Years","Month-to-Month", "One Year" ))
+number_of_referrals <- customer_churn %>% pull(10)
+data_frame(internet_offers,number_of_referrals,ss) %>% 
+  group_by(internet_offers,ss) %>% 
+  summarise(bb =sum(number_of_referrals)) %>% 
+  ggplot(aes(reorder(internet_offers,bb),bb, fill = bb))+geom_col()+facet_wrap(~ss)+
+  scale_y_continuous("No.of Referrals")+scale_fill_viridis()+
+  scale_x_discrete("Offers")+labs(title = "Contract Type and Offers", subtitle = "Customers who do not use any offer (None) reffered the organisation the most")+theme(legend.position = "None",plot.title = element_text(face = "bold",size = 20, hjust = 0.5),strip.text.x = element_text(size = 20),axis.ticks = element_blank(),
+      legend.key=element_blank(),plot.subtitle = element_text(size = 18, hjust = 0.5),
+      panel.background = element_blank(),legend.title= element_text(size = 15),legend.text = element_text(size = 15),
+      axis.title =    element_text(size = 18 ), axis.text =element_text(size = 15))+scale_y_continuous()+
+  gghighlight(internet_offers == "None", calculate_per_facet = T)+scale_y_continuous("No. of users")
+
+  
+
+```
+
+Most of the refferals came from customers that do not  use **any offer** in all three contract types. Keeping customers happy is important and paramount if the organisation wants to grow and referrals is the best and fastest way to acquire new customers.
+
+```{r tenure in months, echo=FALSE,message=FALSE,fig.height=4,fig.width=15}
+tenure_in_months <- customer_churn %>% pull(11)
+total_charges<- customer_churn %>% pull(31)
+
+payment_method <- customer_churn %>% pull(29)
+
+sixty <- seq(49,60,1)
+seven <- seq(61,72,1)
+df =data_frame(tenure_in_months,total_charges,customer_status,payment_method) %>% 
+  filter(customer_status == "Churned") %>% 
+  mutate(tenure_in_months = case_when(tenure_in_months %in% c(1,2,3,4,5,6,7,8,9,10,11,12) ~  " <1 ",
+                           tenure_in_months %in% c(11,12,13,14,15,16,17,18,19,20,21,22,23,24) ~  "2",
+                           tenure_in_months %in% c(25,26,27,28,29,30,31,32,33,34,35,36) ~  "3",
+                           tenure_in_months %in% c(37,38,39,40,41,42,43,44,45,46,47,48) ~  "4",
+                           tenure_in_months %in% sixty ~  "5", tenure_in_months %in% seven ~  "6",
+                           T ~ as.character(tenure_in_months))
+                           
+                                              ) %>% 
+  group_by(tenure_in_months,payment_method,total_charges) %>% 
+  summarise(ss =sum(total_charges)/100000)
+  ggplot(df,aes(reorder(tenure_in_months,ss),ss, fill =ss ))+geom_col()+facet_wrap(~payment_method)+theme_minimal()+scale_fill_viridis()+scale_x_discrete("Years Spent")+labs(
+    title = " We Will Be losing A lot of money and Customers Using \nBank Withdrawal As A Method Of payment", y = "Total charges (Million)")+theme(legend.position = "None",plot.title = element_text(face = "bold",size = 18, hjust = 0.5),strip.text.x = element_text(size = 20),axis.ticks = element_blank(),
+      legend.key=element_blank(),
+      panel.background = element_blank(),legend.title= element_text(size = 15),legend.text = element_text(size = 15),
+      axis.title =    element_text(face = "bold",size = 15 ), axis.text =element_text(size = 15))+scale_y_continuous()
+
+```
+
+The company makes a total of $`r format(sum(total_charges,na.rm = T),big.mark = ",")` from all customers yearly, but due to 
+`r text_spec("churn",bold= T, color = "red")`, the company will lose $`r format(sum(df$total_charges,na.rm = T),big.mark = ",")`.
+
+\pagebreak
+
+**Findings**
+
+1. Competitors is the only known external factor affecting churn.
+They took 49% of our  customers; out of 100, they took 49.
+
+
+2. From internal factors, dissatisfaction, attitude all of which amounted to the remaining 40%, is the major concerns for customers that left, which is a human controllable factor.
+
+
+3. 11% of our customers left due to high price of our services, which is also a reason the customers are going to our customers.
+
+4. Customers who are single(1200), 926 of them left, and in particular, single customers that are Gen X (341) and Millennials(325) left the most. The same age group(Gen X and Millenials) happened to have left the most too for married customers.
+
+5. We have a lot of customers in San Diego (185) who left too (largest customer base), then Los Angeles (78) and San Francisco (31) as our top three of cities where we lost customers.
+
+6. The external factors that contributed to loss of customers:
+
+- Customers using both phone(90.9%) and internet (95%) services churned a lot.
+  
+- Customers using our internet services (fiber optics, DSL and cable) churned a lot too.
+
+- for all the tpe of internet offers the company gives the customers; cutomers using fiber optics churned a lot in all group, the same thing too for customers that do not use any offers.
+
+7. Customers on two years contract are our longest serving customers but this group churned a lot too.
+
+8. The company makes a total of $16,060,725 from all customers yearly, but due to churn, the company will
+lose $2,853,713.
+
+Recommedations
+
+1. Based on competitors taking most of our  customers, market and competitors analysis should be carried out; their prices, offers and level of service should be concentrated on
+
+2. The human factors that customers complained about should be looked into and each deportmant should concentrate on delivering a good service; thgis can be don by creating a service level agreement.
+
+3. Price of services for internet services and phone services should be reduced.
+
+4. The cities the company operates in should be reduced so that the level of services will be at an optimal level.
+
+5. To increase profit, chrun has to be reduced, due to churn, the company will lose $2,853,713 in a year.
+
+### Next Steps
+
+Logistic analysis should be carried out to fully see if they is relationship between the depent variable (churn) and the other independent variables.
+
+
+
+
+
